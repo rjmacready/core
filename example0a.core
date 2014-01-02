@@ -1,0 +1,5 @@
+f = x ;
+f = 3 ;
+f g x y = g ;
+z x y = let z = x in z;
+z x y = letrec z = x in z
