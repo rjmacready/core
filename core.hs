@@ -486,6 +486,7 @@ type Addr = Int
 data Node = NAp Addr Addr
 	  		 | NSupercomb Name [Name] CoreExpr
 			 | NNum Int
+			 | NInd Addr
 
 type TiStack = [Addr]
 
@@ -613,6 +614,7 @@ step state = dispatch (hLookup heap (head stack))
 				 dispatch (NNum n) = numStep state n
 				 dispatch (NAp a1 a2) = apStep state a1 a2
 				 dispatch (NSupercomb sc args body) = scStep state sc args body
+				 dispatch (NInd a1) = step (a1:stack, dump, heap, globals, stats)
 
 numStep :: TiState -> Int -> TiState
 numStep state n = error "Number applied as a function!"
@@ -629,9 +631,10 @@ eval state = state : rest_states
 
 scStep :: TiState -> Name -> [Name] -> CoreExpr -> TiState
 scStep (stack, dump, heap, globals, stats) sc_name arg_names body = 
-		 			(new_stack, dump, new_heap, globals, stats)
+		 			(new_stack, dump, nnew_heap, globals, stats)
 					where
 					new_stack = result_addr : (drop (length arg_names + 1) stack)
+					nnew_heap = hUpdate new_heap result_addr (NInd result_addr)
 					(new_heap, result_addr) = instantiate body heap env
 					env = arg_bindings ++ globals
 					arg_values = getargs heap stack
@@ -727,6 +730,7 @@ showNode :: Node -> Iseq
 showNode (NAp a1 a2) = iConcat [iStr "NAp ", showAddr a1, iStr " ", showAddr a2]
 showNode (NSupercomb name arg body) = iStr ("NSupercomb " ++ name)
 showNode (NNum n) = (iStr "NNum ") `iAppend` (iNum n)
+showNode (NInd addr) = (iStr "NInd ") `iAppend` (showAddr addr)
 
 
 showAddr :: Addr -> Iseq
