@@ -662,7 +662,20 @@ instantiate (ELet isrec defs body) heap env = instantiateLet isrec defs body hea
 instantiate (ECase e alts) heap env = error "Can't instantiate case expr"
 
 instantiateConstr tag arity heap env = error "Can't instantiate constructors yet"
-instantiateLet isrec defs body heap env = error "Can't instantiate let /let recs yet"
+
+instantiateLet False defs body heap env = instantiateNRLet defs body heap env
+instantiateLet _ 	   defs body heap env = error "Can't instantiate letrecs yet"
+
+instantiateNRLet defs body heap env = 
+					  -- call instantiate passing the augmented env and the body		  
+					  instantiate body nheap env2
+				  	  where
+					  -- instantiate the right hand side of each def
+					  (nheap, instantiateddefs) = mapAccuml (\ nheap (name, expr) ->
+					  			 						 				 	 let (nheap2, addr) = instantiate expr nheap env in
+					  			 						 				 	 (nheap2, (name, addr))) heap defs
+					  -- augment the env to bind the names in defs to the addresses of the defs
+					  env2 = env ++ instantiateddefs
 
 
 showResults :: [TiState] -> String
