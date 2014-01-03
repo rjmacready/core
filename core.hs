@@ -637,11 +637,11 @@ scStep (stack, dump, heap, globals, stats) sc_name arg_names body =
 
 					new_stack = result_addr : stack_tail
 
---					result_addr = (last stack_head)
-					(new_heap, result_addr) = instantiate body heap env
+					result_addr = (last stack_head)
+--					(new_heap, result_addr) = instantiate body heap env
 
-					nnew_heap = hUpdate new_heap (last stack_head) (NInd result_addr)
---					nnew_heap = instantiateAndUpdate body result_addr heap env
+--					nnew_heap = hUpdate new_heap (last stack_head) (NInd result_addr)
+					nnew_heap = instantiateAndUpdate body result_addr heap env
 
 					env = arg_bindings ++ globals
 					arg_values = getargs heap stack
