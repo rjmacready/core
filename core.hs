@@ -631,23 +631,31 @@ eval state = state : rest_states
 
 scStep :: TiState -> Name -> [Name] -> CoreExpr -> TiState
 scStep (stack, dump, heap, globals, stats) sc_name arg_names body = 
-		 			(new_stack, dump, nnew_heap, globals, stats)
+		 			(new_stack, dump, new_heap, globals, stats)
 					where
-					new_stack = result_addr : (drop (length arg_names + 1) stack)
-					nnew_heap = hUpdate new_heap result_addr (NInd result_addr)
+					stack_tail = (drop (length arg_names + 1) stack)
+					new_stack = result_addr : stack_tail
 					(new_heap, result_addr) = instantiate body heap env
+
 					env = arg_bindings ++ globals
 					arg_values = getargs heap stack
 					arg_bindings = zip arg_names arg_values 
 
---if (length arg_names == length arg_values) then								 		
---										else
---										  (error "Not enough arguments!")
+
+hLookupFollowInd heap addr = _hLookupFollowInd heap addr
+					  		 		  where
+									  _hLookupFollowInd heap addr = case res of
+									  						  		 		  NInd addr -> _hLookupFollowInd heap addr
+																			  _ -> res
+									  						  		 		  where
+																			  res = hLookup heap addr
 
 getargs :: TiHeap -> TiStack -> [Addr]
 getargs heap (sc:stack) =
 		  map get_arg stack
-		  where get_arg addr = arg where (NAp fun arg) = hLookup heap addr
+		  where get_arg addr = arg 
+		  		  where (NAp fun arg) = hLookup heap addr
+
 
 instantiate :: CoreExpr -> TiHeap -> Assoc Name Addr -> (TiHeap, Addr)
 instantiate (ENum n) heap env = hAlloc heap (NNum n)
@@ -698,7 +706,7 @@ showResults :: [TiState] -> String
 showResults states = iDisplay (iConcat [ iLayn (map showState states), showStats (last states)])
 
 showHeap :: TiHeap -> Iseq
-showHeap (size, _, heap) = iIndent $ iConcat [ iStr "Heap(", iNum size, iStr ")[", 
+showHeap (size, _, heap) = iIndent $ iConcat [ iStr "Heap(", iNum size, iStr ")[", iNewline,
 					 	 		 			  	 			iIndent (iInterleave iNewline (map show_heap_item heap)), iStr "]"]
 			  	 where
 				 show_heap_item (addr, value) = iConcat [ showFWAddr addr, 
@@ -710,7 +718,7 @@ showState (stack, dump, heap, globals, stats) = iConcat [ showStack heap stack, 
 			 												 			  	 showHeap heap, iNewline]
 
 showStack :: TiHeap -> TiStack -> Iseq
-showStack heap stack = iConcat [iStr "Stk[", 
+showStack heap stack = iConcat [iStr "Stk[", iNewline,
 			 				  			 iIndent $ iInterleave iNewline $ map show_stack_item stack,
 										 iStr " ]"]
 			 				  where
