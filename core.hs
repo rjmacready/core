@@ -635,10 +635,11 @@ scStep (stack, dump, heap, globals, stats) sc_name arg_names body =
 					(new_heap, result_addr) = instantiate body heap env
 					env = arg_bindings ++ globals
 					arg_values = getargs heap stack
-					arg_bindings = if (length arg_names == length arg_values) then
-									 		zip arg_names arg_values
-										else
-										  (error "Not enough arguments!")
+					arg_bindings = zip arg_names arg_values 
+
+--if (length arg_names == length arg_values) then								 		
+--										else
+--										  (error "Not enough arguments!")
 
 getargs :: TiHeap -> TiStack -> [Addr]
 getargs heap (sc:stack) =
@@ -664,7 +665,7 @@ instantiate (ECase e alts) heap env = error "Can't instantiate case expr"
 instantiateConstr tag arity heap env = error "Can't instantiate constructors yet"
 
 instantiateLet False defs body heap env = instantiateNRLet defs body heap env
-instantiateLet _ 	   defs body heap env = error "Can't instantiate letrecs yet"
+instantiateLet True  defs body heap env = instantiateRLet defs body heap env
 
 instantiateNRLet defs body heap env = 
 					  -- call instantiate passing the augmented env and the body		  
@@ -673,6 +674,18 @@ instantiateNRLet defs body heap env =
 					  -- instantiate the right hand side of each def
 					  (nheap, instantiateddefs) = mapAccuml (\ nheap (name, expr) ->
 					  			 						 				 	 let (nheap2, addr) = instantiate expr nheap env in
+					  			 						 				 	 (nheap2, (name, addr))) heap defs
+					  -- augment the env to bind the names in defs to the addresses of the defs
+					  env2 = env ++ instantiateddefs
+
+instantiateRLet defs body heap env = 
+					  -- call instantiate passing the augmented env and the body		  
+					  instantiate body nheap env2
+				  	  where
+					  -- instantiate the right hand side of each def
+					  (nheap, instantiateddefs) = mapAccuml (\ nh (name, expr) ->
+					  			 						 				 	 -- only diff here! in non-strict (functional?) langs (Haskell, Miranda, ...), is very easy
+					  			 						 				 	 let (nheap2, addr) = instantiate expr nh env2 in
 					  			 						 				 	 (nheap2, (name, addr))) heap defs
 					  -- augment the env to bind the names in defs to the addresses of the defs
 					  env2 = env ++ instantiateddefs
