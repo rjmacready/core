@@ -631,12 +631,12 @@ eval state = state : rest_states
 
 scStep :: TiState -> Name -> [Name] -> CoreExpr -> TiState
 scStep (stack, dump, heap, globals, stats) sc_name arg_names body = 
-		 			(new_stack, dump, nnew_heap, globals, stats)
+		 			(new_stack, dump, new_heap, globals, stats)
 					where
 					(stack_head, stack_tail) = (splitAt (length arg_names + 1) stack)
+					result_addr = (last stack_head)
 					new_stack = result_addr : stack_tail
-					(new_heap, result_addr) = instantiate body heap env
-					nnew_heap = hUpdate new_heap (last stack_head) (NInd result_addr)
+					new_heap = instantiateAndUpdate body result_addr heap env
 					env = arg_bindings ++ globals
 					arg_values = getargs heap stack
 					arg_bindings = zip arg_names arg_values 
@@ -701,6 +701,25 @@ instantiateRLet defs body heap env =
 					  -- augment the env to bind the names in defs to the addresses of the defs
 					  env2 = env ++ instantiateddefs
 
+-- ###############
+
+instantiateAndUpdate :: CoreExpr -> Addr -> TiHeap -> Assoc Name Addr -> TiHeap
+instantiateAndUpdate (EAp e1 e2) upd_addr heap env = hUpdate heap2 upd_addr (NAp a1 a2)
+								  	  						  		  where
+																	  (heap1, a1) = instantiate e1 heap env
+																	  (heap2, a2) = instantiate e2 heap1 env
+
+instantiateAndUpdate (EVar v) upd_addr heap env =
+				--(error $ "instantiate var " ++ (show v) ++ " with env: " ++ show env)
+				hUpdate heap upd_addr (NInd value)
+				where 
+				value = aLookup v env (error $ "Couldn't instantiate and update EVar " ++ show v ++ 
+						 			  				 	" with env " ++ show env)
+
+instantiateAndUpdate (ENum n) upd_addr heap _ = 
+				hUpdate heap upd_addr (NNum n)
+
+-- ###############
 
 showResults :: [TiState] -> String
 showResults states = iDisplay (iConcat [ iLayn (map showState states), showStats (last states)])
