@@ -725,6 +725,35 @@ instantiateAndUpdate (EVar v) upd_addr heap env =
 instantiateAndUpdate (ENum n) upd_addr heap _ = 
 				hUpdate heap upd_addr (NNum n)
 
+instantiateAndUpdate (ELet isrec defs body) upd_addr heap env = instantiateAndUpdateLet isrec defs body heap env
+
+instantiateAndUpdateLet False defs body heap env = instantiateAndUpdateNRLet defs body heap env
+instantiateAndUpdateLet True  defs body heap env = instantiateAndUpdateRLet defs body heap env
+
+instantiateAndUpdateNRLet defs body heap env = error "..."
+					  -- call instantiate passing the augmented env and the body		  
+--					  instantiate body nheap env2
+--				  	  where
+					  -- instantiate the right hand side of each def
+--					  (nheap, instantiateddefs) = mapAccuml (\ nheap (name, expr) ->
+--					  			 						 				 	 let (nheap2, addr) = instantiate expr nheap env in
+--					  			 						 				 	 (nheap2, (name, addr))) heap defs
+					  -- augment the env to bind the names in defs to the addresses of the defs
+--					  env2 = env ++ instantiateddefs
+
+instantiateAndUpdateRLet defs body heap env = error "..."
+					  -- call instantiate passing the augmented env and the body		  
+--					  instantiate body nheap env2
+--				  	  where
+					  -- instantiate the right hand side of each def
+--					  (nheap, instantiateddefs) = mapAccuml (\ nh (name, expr) ->
+					  			 						 				 	 -- only diff here! in non-strict (functional?) langs (Haskell, Miranda, ...), is very easy
+--					  			 						 				 	 let (nheap2, addr) = instantiate expr nh env2 in
+--					  			 						 				 	 (nheap2, (name, addr))) heap defs
+					  -- augment the env to bind the names in defs to the addresses of the defs
+--					  env2 = env ++ instantiateddefs
+
+
 -- ###############
 
 showResults :: [TiState] -> String
