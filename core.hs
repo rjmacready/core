@@ -631,12 +631,12 @@ eval state = state : rest_states
 
 scStep :: TiState -> Name -> [Name] -> CoreExpr -> TiState
 scStep (stack, dump, heap, globals, stats) sc_name arg_names body = 
-		 			(new_stack, dump, new_heap, globals, stats)
+		 			(new_stack, dump, nnew_heap, globals, stats)
 					where
-					stack_tail = (drop (length arg_names + 1) stack)
+					(stack_head, stack_tail) = (splitAt (length arg_names + 1) stack)
 					new_stack = result_addr : stack_tail
 					(new_heap, result_addr) = instantiate body heap env
-
+					nnew_heap = hUpdate new_heap (last stack_head) (NInd result_addr)
 					env = arg_bindings ++ globals
 					arg_values = getargs heap stack
 					arg_bindings = zip arg_names arg_values 
@@ -654,7 +654,7 @@ getargs :: TiHeap -> TiStack -> [Addr]
 getargs heap (sc:stack) =
 		  map get_arg stack
 		  where get_arg addr = arg 
-		  		  where (NAp fun arg) = hLookup heap addr
+		  		  where (NAp fun arg) = hLookupFollowInd heap addr
 
 
 instantiate :: CoreExpr -> TiHeap -> Assoc Name Addr -> (TiHeap, Addr)
