@@ -599,7 +599,7 @@ doAdmin :: TiState -> TiState
 doAdmin state = applyToStats tiStatIncSteps state
 
 tiFinal :: TiState -> Bool
-tiFinal ([sole_addr], dump, heap, globals, stats) = isDataNode (hLookup heap sole_addr)
+tiFinal ([sole_addr], dump, heap, globals, stats) = isDataNode (hLookupFollowInd heap sole_addr)
 tiFinal ([], _, _, _, _) = error "Empty stack!"
 tiFinal state = False
 
@@ -614,7 +614,7 @@ step state = dispatch (hLookup heap (head stack))
 				 dispatch (NNum n) = numStep state n
 				 dispatch (NAp a1 a2) = apStep state a1 a2
 				 dispatch (NSupercomb sc args body) = scStep state sc args body
-				 dispatch (NInd a1) = step (a1:stack, dump, heap, globals, stats)
+				 dispatch (NInd a1) = step (a1:(tail stack), dump, heap, globals, stats)
 
 numStep :: TiState -> Int -> TiState
 numStep state n = error "Number applied as a function!"
@@ -631,12 +631,18 @@ eval state = state : rest_states
 
 scStep :: TiState -> Name -> [Name] -> CoreExpr -> TiState
 scStep (stack, dump, heap, globals, stats) sc_name arg_names body = 
-		 			(new_stack, dump, new_heap, globals, stats)
+		 			(new_stack, dump, nnew_heap, globals, stats)
 					where
 					(stack_head, stack_tail) = (splitAt (length arg_names + 1) stack)
-					result_addr = (last stack_head)
+
 					new_stack = result_addr : stack_tail
-					new_heap = instantiateAndUpdate body result_addr heap env
+
+--					result_addr = (last stack_head)
+					(new_heap, result_addr) = instantiate body heap env
+
+					nnew_heap = hUpdate new_heap (last stack_head) (NInd result_addr)
+--					nnew_heap = instantiateAndUpdate body result_addr heap env
+
 					env = arg_bindings ++ globals
 					arg_values = getargs heap stack
 					arg_bindings = zip arg_names arg_values 
@@ -783,7 +789,11 @@ runProg = showResults . eval . compile . parse
 main2 f = do
 		  content <- readFile f
 		  let results = runProg content
-		  print results
+		  return results
+
+main2log f l = do
+					 output <- main2 f
+					 writeFile l output 
 
 main f = do
 		  content <- readFile f
