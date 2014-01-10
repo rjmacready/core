@@ -487,11 +487,14 @@ data Node = NAp Addr Addr
 	  		 | NSupercomb Name [Name] CoreExpr
 			 | NNum Int
 			 | NInd Addr
+			 | NPrim Name Primitive
+
+data Primitive = Neg | Add | Sub | Mul | Div
 
 type TiStack = [Addr]
 
-data TiDump = DummyTiDump
-initialTiDump = DummyTiDump
+type TiDump = [TiStack]
+initialTiDump = []
 
 type Assoc a b = [(a, b)]
 
@@ -576,9 +579,21 @@ mapAccuml f acc (h:r) = (acc'', parsed:list)
 									(acc', parsed) = f acc h
 									(acc'', list) = (mapAccuml f acc' r)
 
-buildInitialHeap :: [CoreScnDefn] -> (TiHeap, TiGlobals)
-buildInitialHeap sc_defs = mapAccuml allocateSc hInitial sc_defs
+primitives :: Assoc Name Primitive
+primitives = [("negate", Neg), 
+			  	  ("+", Add), ("-", Sub),
+				  ("*", Mul), ("/", Div)]
 
+buildInitialHeap :: [CoreScnDefn] -> (TiHeap, TiGlobals)
+buildInitialHeap sc_defs = (heap2, sc_addrs ++ prim_addrs)
+					  			 	where
+									(heap1, sc_addrs) = mapAccuml allocateSc hInitial sc_defs
+									(heap2, prim_addrs) = mapAccuml allocatePrim heap1 primitives
+
+allocatePrim :: TiHeap -> (Name, Primitive) -> (TiHeap, (Name, Addr))
+allocatePrim heap (name, prim) = (heap', (name, addr))
+				 				 		 	where
+											(heap', addr) = hAlloc heap (NPrim name prim)
 
 allocateSc :: TiHeap -> CoreScnDefn -> (TiHeap, (Name, Addr))
 allocateSc heap (name, args, body) = (heap', (name, addr))
@@ -615,6 +630,19 @@ step state = dispatch (hLookup heap (head stack))
 				 dispatch (NAp a1 a2) = apStep state a1 a2
 				 dispatch (NSupercomb sc args body) = scStep state sc args body
 				 dispatch (NInd a1) = step (a1:(tail stack), dump, heap, globals, stats)
+				 dispatch (NPrim _ p) = stepPrim state p
+
+stepPrim :: TiState -> Primitive -> TiState
+stepPrim state Neg = primNeg state
+
+primNeg state = 
+		  -- getArgs to extract the single argument, hLookup it
+		  -- check if it isDataNode
+		  -- -- if it is not, setup a new state to eval the argument.
+		  -- -- -- ...
+		  -- -- if it is, hUpdate it and return, stack must be ok
+		  error "TODO"
+
 
 numStep :: TiState -> Int -> TiState
 numStep state n = error "Number applied as a function!"
@@ -793,6 +821,7 @@ showNode (NAp a1 a2) = iConcat [iStr "NAp ", showAddr a1, iStr " ", showAddr a2]
 showNode (NSupercomb name arg body) = iStr ("NSupercomb " ++ name)
 showNode (NNum n) = (iStr "NNum ") `iAppend` (iNum n)
 showNode (NInd addr) = (iStr "NInd ") `iAppend` (showAddr addr)
+showNode (NPrim name _) = (iStr name)
 
 
 showAddr :: Addr -> Iseq
