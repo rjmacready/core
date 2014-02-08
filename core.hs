@@ -635,13 +635,22 @@ step state = dispatch (hLookup heap (head stack))
 stepPrim :: TiState -> Primitive -> TiState
 stepPrim state Neg = primNeg state
 
-primNeg state = 
-		  -- getArgs to extract the single argument, hLookup it
+primNeg (stack, dump, heap, globals, stats) = 
+		  
+		  
 		  -- check if it isDataNode
 		  -- -- if it is not, setup a new state to eval the argument.
 		  -- -- -- ...
 		  -- -- if it is, hUpdate it and return, stack must be ok
 		  error "TODO"
+		  where
+		  -- getargs to extract the single argument, hLookup' it
+		  (arg:[]) = getargs heap stack
+		  argvalue = hLookup heap arg
+		  argevaled = if isDataNode argvalue then
+		  				  	  error "isdatanode"
+						  else
+								error "not isdatanode"
 
 
 numStep :: TiState -> Int -> TiState
